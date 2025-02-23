@@ -1,35 +1,47 @@
-cmake_minimum_required(VERSION 3.8)
-project(unitree-go1-interfacett)
+cmake_minimum_required(VERSION 3.11)
 
+# set name of the project
+project(parkour_unitree_go1)
+
+# set cxx standard and compiler flag
+set(CMAKE_CXX_STANDARD 17)
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
-find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+# -----------------------------------------------------------------------------
+# ros dependencies
+# -----------------------------------------------------------------------------
 
-add_executable(my_node src/my_node.cpp)
-target_include_directories(my_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(my_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+find_package(crl_unitree_go1 0.7.0 EXACT REQUIRED)
+find_package(parkour_unitree_commons 0.1.0 EXACT REQUIRED)
 
-install(TARGETS my_node
-  DESTINATION lib/${PROJECT_NAME})
+# -----------------------------------------------------------------------------
+# resource files
+# -----------------------------------------------------------------------------
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
+# launch 
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
 
+# config 
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
+
+# -----------------------------------------------------------------------------
+# code
+# -----------------------------------------------------------------------------
+
+# executable
+add_executable(robot src/main.cpp)
+
+ament_target_dependencies(robot 
+  crl_unitree_go1 parkour_unitree_commons)
+
+install(
+        TARGETS robot
+        DESTINATION lib/${PROJECT_NAME}
+)
+
+# -----------------------------------------------------------------------------
+ament_export_dependencies(
+  crl_unitree_go1)
 ament_package()
