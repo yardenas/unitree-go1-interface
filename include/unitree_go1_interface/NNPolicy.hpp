@@ -6,6 +6,7 @@
 #define UNITREE_GO1_INTERFACE_CONTROLLER_H
 
 #include "crl-loco/control/LocomotionController.h"
+#include <filesystem>
 #include <onnxruntime/onnxruntime_cxx_api.h>
 
 namespace crl::unitree_go1_interface {
@@ -63,77 +64,52 @@ public:
 
   void allocateMemory();
 
-  void setConstants();
-
-  bool loadModelFromFile(const std::string &fileName);
-
-  bool loadMotionFromFile(const std::string &fileName);
-
-  void setActionNormalizer(const crl::dVector &obsJointAngleZeroOffset,
-                           const crl::dVector &obsJointAngleScaleFactor,
-                           const crl::dVector &obsJointSpeedScaleFactor,
-                           const crl::dVector &obsAngVelScaleFactor,
-                           const crl::dVector &actJointAngleZeroOffset,
-                           const crl::dVector &actScaleFactor);
-
-  void setJointObservationNormalizer(const crl::dVector &angleScaleFactor,
-                                     const crl::dVector &angleZeroOffset,
-                                     const crl::dVector &speedScaleFactor);
-
-  crl::dVector getRetargetedMotion();
-
+  void loadModelFromFile(const std::filesystem::path &policyPath);
   void drawDebugInfo(const crl::gui::Shader &shader,
                      float alpha = 1.0f) override;
 
-  crl::dVector getProprioObservation();
-  crl::dVector getPrivObservation();
-  crl::dVector getObservation();
-
 private:
-  void prepareForControlStep(double dt) override;
-
   void computeControlSignals(double dt) override;
 
   void applyControlSignals(double dt) override;
 
   void populateData() override;
 
+  crl::dVector getObservation() const;
+
+  crl::dVector getGyro() const;
+
+  crl::dVector getGravity() const;
+
+  crl::dVector getJointAngles() const;
+
+  crl::dVector getJointVelocities() const;
+
+  crl::dVector getLinearVelocity() const;
+
+  crl::dVector getCommand() const;
+
   crl::dVector getJointTargets() const;
 
   crl::dVector queryNetwork(const crl::dVector &obs);
 
-private:
   // cache
   crl::dVector action_;
-  crl::dVector obsHistory_;
   int inputDim_;
   int outputDim_;
   crl::dVector privLatent = crl::dVector::Zero(29);
-  // normalizer
-  // action
-  crl::dVector actScaleFactor_;
-  // joint state normalizer
-  crl::dVector obsJointAngleZeroOffset_;
-  crl::dVector obsJointAngleScaleFactor_;
-  crl::dVector obsJointSpeedScaleFactor_;
-  crl::dVector obsAngVelScaleFactor_;
-  crl::dVector actJointAngleZeroOffset_;
-
-  // clip
-  double clipAction_ = 100.;
-  double clipObs_ = 100.;
-
   // onnx
   Ort::Env env_;
   Ort::Session session_{nullptr};
   Ort::Value inputTensor_{nullptr};
   Ort::Value outputTensor_{nullptr};
+  // TODO (yarden): these could technically be initialized in the constructor
+  // and be constants.
   std::vector<float> inputData_;
   std::vector<float> outputData_;
   std::array<int64_t, 2> inputShape_;
   std::array<int64_t, 2> outputShape_;
   // first run flags
-  bool firstQuery = true;
 };
 } // namespace crl::unitree_go1_interface
 
