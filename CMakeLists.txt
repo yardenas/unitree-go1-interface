@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.11)
 
 # set name of the project
-project(parkour_unitree_go1)
+project(unitree_go1_interface)
 
 # set cxx standard and compiler flag
 set(CMAKE_CXX_STANDARD 17)
@@ -13,28 +13,36 @@ endif()
 # ros dependencies
 # -----------------------------------------------------------------------------
 
-find_package(crl_unitree_go1 0.7.0 EXACT REQUIRED)
-find_package(parkour_unitree_commons 0.1.0 EXACT REQUIRED)
+find_package(crl_unitree_go1 0.8.0 EXACT REQUIRED)
+find_package(onnxruntime 1.15.0 EXACT REQUIRED)
 
 # -----------------------------------------------------------------------------
 # resource files
 # -----------------------------------------------------------------------------
 
 # launch 
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
+# TODO (yarden): make a launch file.
+# install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
 
 # config 
-install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
+# TODO (yarden): figure this out later.
+# install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
 
 # -----------------------------------------------------------------------------
 # code
 # -----------------------------------------------------------------------------
-
 # executable
 add_executable(robot src/main.cpp)
 
+target_include_directories(
+        robot
+        PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>" #
+        "$<INSTALL_INTERFACE:include>"
+)
+
 ament_target_dependencies(robot 
-  crl_unitree_go1 parkour_unitree_commons)
+  crl_unitree_go1)
 
 install(
         TARGETS robot
