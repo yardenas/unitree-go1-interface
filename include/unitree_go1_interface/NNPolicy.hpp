@@ -64,11 +64,13 @@ public:
 
   void allocateMemory();
 
-  void loadModelFromFile(const std::filesystem::path &policyPath);
   void drawDebugInfo(const crl::gui::Shader &shader,
                      float alpha = 1.0f) override;
+  void setup(const std::filesystem::path &policyPath,
+             const std::vector<double> &defaultPose, double actScale);
 
 private:
+  void loadModelFromFile(const std::filesystem::path &policyPath);
   void computeControlSignals(double dt) override;
 
   void applyControlSignals(double dt) override;
@@ -93,8 +95,11 @@ private:
 
   crl::dVector queryNetwork(const crl::dVector &obs);
 
-  // cache
   crl::dVector action_;
+  // TODO (yarden): these should be consts and be initialized in the
+  // constructor.
+  crl::dVector defaultPose_;
+  double actScale_;
   // onnx
   Ort::Env env_;
   Ort::Session session_{nullptr};
@@ -106,7 +111,6 @@ private:
   std::vector<float> outputData_;
   std::array<int64_t, 2> inputShape_;
   std::array<int64_t, 2> outputShape_;
-  // first run flags
 };
 } // namespace crl::unitree_go1_interface
 

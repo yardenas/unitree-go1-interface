@@ -1,3 +1,4 @@
+policy_path: null
 default_pose:
   - 0.1
   - 0.9
@@ -11,3 +12,4 @@ default_pose:
   - -0.1
   - 0.9
   - -1.8
+action_scale: 0.5
