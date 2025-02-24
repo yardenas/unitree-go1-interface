@@ -80,17 +80,13 @@ public:
                                      const crl::dVector &angleZeroOffset,
                                      const crl::dVector &speedScaleFactor);
 
-  crl::dVector getRetargetedMotion();
-
   void drawDebugInfo(const crl::gui::Shader &shader,
                      float alpha = 1.0f) override;
 
   crl::dVector getProprioObservation();
   crl::dVector getPrivObservation();
-  crl::dVector getObservation();
 
 private:
-
   void computeControlSignals(double dt) override;
 
   void applyControlSignals(double dt) override;
@@ -117,11 +113,6 @@ private:
   crl::dVector obsJointSpeedScaleFactor_;
   crl::dVector obsAngVelScaleFactor_;
   crl::dVector actJointAngleZeroOffset_;
-
-  // clip
-  double clipAction_ = 100.;
-  double clipObs_ = 100.;
-
   // onnx
   Ort::Env env_;
   Ort::Session session_{nullptr};
