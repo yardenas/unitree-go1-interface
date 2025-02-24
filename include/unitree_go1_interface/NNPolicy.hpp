@@ -8,12 +8,8 @@
 #include "crl-loco/control/LocomotionController.h"
 #include <onnxruntime/onnxruntime_cxx_api.h>
 
-namespace unitree::commons {
+namespace crl::unitree_go1_interface {
 
-/**
- * RL + MOC Controller.
- * Load policy specified in configuration file.
- */
 class NNPolicy final : public crl::loco::LocomotionController {
   const int FL_TO_FR_INDEX_MAP[12] = {
       /* FR */
@@ -139,6 +135,6 @@ private:
   // first run flags
   bool firstQuery = true;
 };
-} // namespace unitree::commons
+} // namespace crl::unitree_go1_interface
 
 #endif // UNITREE_GO1_INTERFACE_CONTROLLER_H

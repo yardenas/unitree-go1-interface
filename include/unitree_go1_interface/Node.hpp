@@ -7,7 +7,7 @@
 
 #include "unitree_go1_interface/NNPolicy.hpp"
 
-namespace unitree::commons {
+namespace crl::unitree_go1_interface {
 
 class Node : public crl::unitree::commons::ControllerNode<NNPolicy> {
 public:
@@ -21,6 +21,6 @@ private:
   const std::shared_ptr<crl::unitree::commons::UnitreeLeggedRobotData>
       sensorData_;
 };
-} // namespace unitree::commons
+} // namespace crl::unitree_go1_interface
 
 #endif // UNITREE_GO1_INTERFACE_NODE_H
