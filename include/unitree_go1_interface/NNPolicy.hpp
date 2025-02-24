@@ -95,9 +95,6 @@ private:
 
   // cache
   crl::dVector action_;
-  int inputDim_;
-  int outputDim_;
-  crl::dVector privLatent = crl::dVector::Zero(29);
   // onnx
   Ort::Env env_;
   Ort::Session session_{nullptr};
