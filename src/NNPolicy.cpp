@@ -2,6 +2,7 @@
 
 #include "unitree_go1_interface/NNPolicy.hpp"
 #include <array>
+#include <crl-basic/utils/mathDefs.h>
 #include <filesystem>
 #include <string>
 
@@ -15,12 +16,6 @@ NNPolicy::NNPolicy(const std::shared_ptr<crl::loco::LeggedRobot> &robot,
 
 void NNPolicy::allocateMemory() {
   crl::resize(action_, robot->getJointCount());
-  crl::resize(actScaleFactor_, robot->getJointCount());
-  crl::resize(obsJointAngleZeroOffset_, robot->getJointCount());
-  crl::resize(obsJointAngleScaleFactor_, robot->getJointCount());
-  crl::resize(obsJointSpeedScaleFactor_, robot->getJointCount());
-  crl::resize(actJointAngleZeroOffset_, robot->getJointCount());
-  crl::resize(obsAngVelScaleFactor_, 3);
   // TODO (yarden): these can be set at compile time. Technically this could
   // just be an array, but I don't want to break old code that is known to work.
   constexpr int inputDim = 48;
@@ -29,29 +24,6 @@ void NNPolicy::allocateMemory() {
   outputData_.resize(outputDim);
   inputShape_ = {1, inputDim};
   outputShape_ = {1, outputDim};
-}
-
-void NNPolicy::setActionNormalizer(const crl::dVector &obsJointAngleZeroOffset,
-                                   const crl::dVector &obsJointAngleScaleFactor,
-                                   const crl::dVector &obsJointSpeedScaleFactor,
-                                   const crl::dVector &obsAngVelScaleFactor,
-                                   const crl::dVector &actJointAngleZeroOffset,
-                                   const crl::dVector &actScaleFactor) {
-  // Set observation normalizer
-  for (int i = 0; i < robot->getJointCount(); i++) {
-    obsJointAngleScaleFactor_[i] = obsJointAngleScaleFactor[i];
-    obsJointSpeedScaleFactor_[i] = obsJointSpeedScaleFactor[i];
-    obsJointAngleZeroOffset_[i] = obsJointAngleZeroOffset[i];
-  }
-  for (int i = 0; i < 3; i++) {
-    obsAngVelScaleFactor_[i] = obsAngVelScaleFactor[i];
-  }
-
-  // Set action normalizer
-  for (int i = 0; i < robot->getJointCount(); i++) {
-    actScaleFactor_[i] = actScaleFactor[i];
-    actJointAngleZeroOffset_[i] = actJointAngleZeroOffset[i];
-  }
 }
 
 void NNPolicy::loadModelFromFile(const std::filesystem::path &policyPath) {
@@ -79,157 +51,87 @@ void NNPolicy::loadModelFromFile(const std::filesystem::path &policyPath) {
 
 void NNPolicy::drawDebugInfo(const crl::gui::Shader &, float) {}
 
-crl::dVector NNPolicy::getProprioObservation() {
-  // priprioceptive
-  crl::dVector base_ang_vel(3);
-  double roll;
-  double pitch;
-  double yaw;
-  crl::dVector placeHolder1 = crl::dVector::Zero(1);
-  crl::dVector deltaYaw(1);
-  crl::dVector deltaNextYaw(1);
-  crl::dVector placeHolder2 = crl::dVector::Zero(1);
-  crl::dVector standBoolean(1);
-  crl::dVector command(1);
-  crl::dVector walkBoolean(2);
-  crl::dVector dof_pos(12);
-  crl::dVector dof_vel(12);
-  crl::dVector contactBoolean(4);
-  // Hardcode scale factor
-  {
-    const auto &state = data->getLeggedRobotState();
-    const auto &sensor = data->getSensor();
-    crl::V3D baseAngVel =
-        state.baseOrientation.inverse() * state.baseAngularVelocity;
-    for (int i = 0; i < 3; i++) {
-      base_ang_vel[VELOCITY_INDEX_MAP[i]] =
-          baseAngVel[i] * obsAngVelScaleFactor_[i];
-    }
-    crl::utils::computeEulerAnglesFromQuaternion(
-        state.baseOrientation, crl::V3D(0, 0, 1), crl::V3D(1, 0, 0),
-        crl::V3D(0, 1, 0), roll, pitch, yaw);
-    crl::dVector jointAngles;
-    crl::dVector jointSpeed;
-    crl::resize(jointAngles, state.jointStates.size());
-    crl::resize(jointSpeed, state.jointStates.size());
-    for (int i = 0; i < (int)state.jointStates.size(); i++) {
-      jointAngles[i] = state.jointStates[i].jointPos;
-      jointSpeed[i] = state.jointStates[i].jointVel;
-    }
-    for (int i = 0; i < 12; i++) {
-      dof_pos[JOINT_INDEX_MAP[i]] =
-          (jointAngles[i] - obsJointAngleZeroOffset_[i]) *
-          obsJointAngleScaleFactor_[i];
-      dof_vel[JOINT_INDEX_MAP[i]] =
-          jointSpeed[i] * obsJointSpeedScaleFactor_[i];
-    }
-    walkBoolean[0] = 1.0;
-    walkBoolean[1] = 0.0;
+crl::dVector NNPolicy::getGyro() const {
+  crl::dVector gyro(3);
+  const auto &state = data->getLeggedRobotState();
+  crl::V3D baseAngVel =
+      state.baseOrientation.inverse() * state.baseAngularVelocity;
+  for (int i = 0; i < 3; i++) {
+    gyro[VELOCITY_INDEX_MAP[i]] = baseAngVel[i];
   }
-
-  // command
-  crl::dVector cmd(2);
-  {
-    const auto &command = data->getCommand();
-    cmd[0] = command.targetForwardSpeed;
-    cmd[1] = command.targetTurngingSpeed;
-
-    double commandThreshold = 0.1;
-    // calculate absolute value of command.targetForwardSpeed
-    if (command.targetForwardSpeed < commandThreshold &&
-        command.targetForwardSpeed > -commandThreshold) {
-      cmd[0] = 0;
-      standBoolean[0] = 1.0;
-    } else {
-      standBoolean[0] = 0.0;
-    }
-  }
-  if (cmd[0] > 1.0) {
-    cmd[0] = 1.0;
-  }
-  if (cmd[0] < -1.0) {
-    cmd[0] = -1.0;
-  }
-  deltaYaw << cmd[1];
-  deltaNextYaw << cmd[1];
-  command << cmd[0];
-  double delta_yaw_thres = PI / 180. * 30.;
-  if (deltaYaw[0] > delta_yaw_thres) {
-    deltaYaw[0] = delta_yaw_thres;
-  }
-  if (deltaYaw[0] < -delta_yaw_thres) {
-    deltaYaw[0] = -delta_yaw_thres;
-  }
-  if (deltaNextYaw[0] > delta_yaw_thres) {
-    deltaNextYaw[0] = delta_yaw_thres;
-  }
-  if (deltaNextYaw[0] < -delta_yaw_thres) {
-    deltaNextYaw[0] = -delta_yaw_thres;
-  }
-  crl::dVector obsAction(12);
-  for (int i = 0; i < 12; i++) {
-    obsAction[i] = action_[i];
-  }
-  crl::dVector obsProprio;
-  int obsProprioDim = base_ang_vel.size() + 2 + placeHolder1.size() +
-                      deltaYaw.size() + deltaNextYaw.size() +
-                      standBoolean.size() + placeHolder2.size() +
-                      command.size() + walkBoolean.size() + dof_pos.size() +
-                      dof_vel.size() + obsAction.size() + contactBoolean.size();
-  crl::resize(obsProprio, obsProprioDim);
-  obsProprio << base_ang_vel, roll, pitch, placeHolder1, deltaYaw, deltaNextYaw,
-      placeHolder2, standBoolean, command, walkBoolean, dof_pos, dof_vel,
-      obsAction, contactBoolean;
-  return obsProprio;
+  return gyro;
 }
 
-crl::dVector NNPolicy::getPrivObservation() {
-  crl::dVector base_lin_vel(3);
-  crl::dVector placeholder = crl::dVector::Zero(6);
+crl::dVector NNPolicy::getGravity() const {
+  const auto &state = data->getLeggedRobotState();
+  //   TODO (yarden): isn't this just inverse()?
+  return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -9.81);
+}
 
-  // hardcode
-  double obsLinVelScaleFactor_ = 2;
-
-  {
-    const auto &state = data->getLeggedRobotState();
-    crl::V3D baseLinVel = state.baseOrientation.inverse() * state.baseVelocity;
-    for (int i = 0; i < 3; i++) {
-      base_lin_vel[VELOCITY_INDEX_MAP[i]] =
-          baseLinVel[i] * obsLinVelScaleFactor_;
-    }
+crl::dVector NNPolicy::getJointAngles() const {
+  const auto &state = data->getLeggedRobotState();
+  crl::dVector jointAngles;
+  crl::resize(jointAngles, state.jointStates.size());
+  for (int i = 0; i < (int)state.jointStates.size(); i++) {
+    jointAngles[i] = state.jointStates[i].jointPos;
   }
+  return jointAngles;
+}
 
-  crl::dVector obsPriv(9);
-  obsPriv << base_lin_vel, placeholder;
-  return obsPriv;
+crl::dVector NNPolicy::getJointVelocities() const {
+  const auto &state = data->getLeggedRobotState();
+  crl::dVector jointVelocities;
+  crl::resize(jointVelocities, state.jointStates.size());
+  for (int i = 0; i < (int)state.jointStates.size(); i++) {
+    jointVelocities[i] = state.jointStates[i].jointVel;
+  }
+  return jointVelocities;
+}
+
+crl::dVector NNPolicy::getLinearVelocity() const {
+  const auto &state = data->getLeggedRobotState();
+  // TODO (yarden): double-check this. The velocity should be in the local
+  // frame so it might be that the orientation is not relevant
+  crl::V3D baseLinVel = state.baseOrientation.inverse() * state.baseVelocity;
+  crl::dVector linVel(3);
+  for (int i = 0; i < 3; i++) {
+    linVel[VELOCITY_INDEX_MAP[i]] = baseLinVel[i];
+  }
+  return linVel;
+}
+
+crl::dVector NNPolicy::getCommand() const {
+  const auto &command = data->getCommand();
+  crl::dVector cmd(2);
+  cmd[0] = command.targetForwardSpeed;
+  cmd[1] = command.targetTurngingSpeed;
+  return cmd;
+}
+
+crl::dVector NNPolicy::getObservation() const {
+  const crl::dVector obsAction = action_;
+  const auto gyro = getGyro();
+  const auto gravity = getGravity();
+  const auto jointAngles = getJointAngles();
+  const auto jointVelocities = getJointVelocities();
+  const auto linearVelocity = getLinearVelocity();
+  const auto command = getCommand();
+  crl::dVector observation;
+  int obsProprioDim = gyro.size() + gravity.size() + jointAngles.size() +
+                      jointVelocities.size() + linearVelocity.size() +
+                      obsAction.size() + command.size();
+  crl::resize(observation, obsProprioDim);
+  observation << linearVelocity, gyro, gravity, jointAngles, jointVelocities,
+      obsAction, command;
+  return observation;
 }
 
 void NNPolicy::computeControlSignals(double) {
-  // proprioceptive
-  auto obsProprio = getProprioObservation();
-
-  // exteroceptive
-  const auto &state = data->getLeggedRobotState();
-  double roll, pitch, yaw;
-  crl::utils::computeEulerAnglesFromQuaternion(
-      state.baseOrientation, crl::V3D(0, 0, 1), crl::V3D(1, 0, 0),
-      crl::V3D(0, 1, 0), roll, pitch, yaw);
-  //   TODO (yarden): check if this is the correct way to calculate yaw
-  //   crl::Quaternion yawQuat =
-  //       crl::utils::getRotationQuaternion(yaw, crl::V3D(0, 1, 0));
-  // privLatent is filled internally by the policy
-  crl::dVector privLatent = crl::dVector::Zero(29);
-
-  // combine observations
-  auto obsPriv = getPrivObservation();
-  crl::dVector obs;
-  int obsDim = obsProprio.size() + obsPriv.size() + privLatent.size();
-  crl::resize(obs, obsDim);
-  obs << obsProprio, obsPriv, privLatent;
+  auto observation = getObservation();
   // query the policy network
   crl::dVector output;
   crl::resize(output, 12);
-  output = queryNetwork(obs);
+  output = queryNetwork(observation);
   action_ = output;
 }
 
@@ -263,20 +165,6 @@ void NNPolicy::populateData() {
 crl::dVector NNPolicy::getJointTargets() const {
   crl::dVector scaledAction = action_;
   crl::dVector jointTarget = action_;
-  scaledAction = scaledAction.cwiseProduct(actScaleFactor_);
-  // clip scaledAction to [-1.2, 1.2]
-  for (int i = 0; i < 12; i++) {
-    if (scaledAction[i] > 1.2) {
-      scaledAction[i] = 1.2;
-    } else if (scaledAction[i] < -1.2) {
-      scaledAction[i] = -1.2;
-    }
-  }
-  // scaledAction = scaledAction*0;
-  for (int i = 0; i < 12; i++) {
-    jointTarget[JOINT_INDEX_MAP[i]] =
-        scaledAction[JOINT_INDEX_MAP[i]] + actJointAngleZeroOffset_[i];
-  }
   // jointTarget: (FR_hip, FR_thigh, FR_calf), (FL_hip, FL_thigh, FL_calf),
   // ...
 
