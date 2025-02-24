@@ -64,11 +64,12 @@ crl::dVector NNPolicy::getGyro() const {
 
 crl::dVector NNPolicy::getGravity() const {
   const auto &state = data->getLeggedRobotState();
-  //   TODO (yarden): isn't this just inverse()?
   return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -9.81);
 }
 
 crl::dVector NNPolicy::getJointAngles() const {
+  // TODO (yarden): make sure that the orders of indexed/joints match the ones
+  // in mujoco playground
   const auto &state = data->getLeggedRobotState();
   crl::dVector jointAngles;
   crl::resize(jointAngles, state.jointStates.size());
