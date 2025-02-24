@@ -90,7 +90,6 @@ public:
   crl::dVector getObservation();
 
 private:
-  void prepareForControlStep(double dt) override;
 
   void computeControlSignals(double dt) override;
 
