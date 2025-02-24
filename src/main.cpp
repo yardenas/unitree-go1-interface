@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   crl::fsm::Transition<States::STAND, States::WALK> t6;
   crl::fsm::Transition<States::WALK, States::ESTOP> t7;
   crl::fsm::Transition<States::WALK, States::STAND> t8;
-  //   // data
+  // data
   const auto &model = crl::unitree::commons::robotModels.at("GO1");
   const auto robot = std::make_shared<crl::loco::LeggedRobot>(
       model.rbsFile.c_str(), model.rsFile.c_str());
@@ -58,7 +58,6 @@ int main(int argc, char **argv) {
           m1, m2, m3, m4);
   constexpr auto t_cols = crl::fsm::make_transitions_collection<States>(
       t1, t2, t3, t4, t5, t6, t7, t8);
-
   // init ros process
   rclcpp::init(argc, argv);
   auto machine = crl::fsm::make_fsm<Machines, Machines::ONBOARD>(

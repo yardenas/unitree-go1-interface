@@ -1,5 +1,6 @@
 
 #include <filesystem>
+#include <vector>
 
 #include "unitree_go1_interface/NNPolicy.hpp"
 #include "unitree_go1_interface/Node.hpp"
@@ -14,13 +15,12 @@ Node::Node(
   auto paramDescription = rcl_interfaces::msg::ParameterDescriptor{};
   paramDescription.description = "Parameters for controlling the unitree go1.";
   paramDescription.read_only = true;
-  this->declare_parameter<std::string>("data_folder", ".", paramDescription);
-  this->declare_parameter<std::string>("model", "/model/go1/model.json",
-                                       paramDescription);
+  this->declare_parameter<std::string>("policyPath", paramDescription);
+  // TODO (yarden): get a better default
+  this->declare_parameter<std::vector<double>>(
+      "defaultPose", {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, paramDescription);
   const auto modelPath =
-      std::filesystem::path(this->get_parameter("model").as_string());
-  const auto dataPath =
-      std::filesystem::path(this->get_parameter("data_folder").as_string());
-  controller_->loadModelFromFile((dataPath / modelPath).string());
+      std::filesystem::path(this->get_parameter("policyPath").as_string());
+  controller_->loadModelFromFile(modelPath);
 }
 } // namespace crl::unitree_go1_interface

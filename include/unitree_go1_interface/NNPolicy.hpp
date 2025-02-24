@@ -6,6 +6,7 @@
 #define UNITREE_GO1_INTERFACE_CONTROLLER_H
 
 #include "crl-loco/control/LocomotionController.h"
+#include <filesystem>
 #include <onnxruntime/onnxruntime_cxx_api.h>
 
 namespace crl::unitree_go1_interface {
@@ -65,10 +66,6 @@ public:
 
   void setConstants();
 
-  bool loadModelFromFile(const std::string &fileName);
-
-  bool loadMotionFromFile(const std::string &fileName);
-
   void setActionNormalizer(const crl::dVector &obsJointAngleZeroOffset,
                            const crl::dVector &obsJointAngleScaleFactor,
                            const crl::dVector &obsJointSpeedScaleFactor,
@@ -80,6 +77,7 @@ public:
                                      const crl::dVector &angleZeroOffset,
                                      const crl::dVector &speedScaleFactor);
 
+  void loadModelFromFile(const std::filesystem::path &policyPath);
   void drawDebugInfo(const crl::gui::Shader &shader,
                      float alpha = 1.0f) override;
 
@@ -100,7 +98,6 @@ private:
 private:
   // cache
   crl::dVector action_;
-  crl::dVector obsHistory_;
   int inputDim_;
   int outputDim_;
   crl::dVector privLatent = crl::dVector::Zero(29);
@@ -123,7 +120,6 @@ private:
   std::array<int64_t, 2> inputShape_;
   std::array<int64_t, 2> outputShape_;
   // first run flags
-  bool firstQuery = true;
 };
 } // namespace crl::unitree_go1_interface
 

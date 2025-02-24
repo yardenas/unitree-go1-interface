@@ -21,6 +21,14 @@ void NNPolicy::allocateMemory() {
   crl::resize(obsJointSpeedScaleFactor_, robot->getJointCount());
   crl::resize(actJointAngleZeroOffset_, robot->getJointCount());
   crl::resize(obsAngVelScaleFactor_, 3);
+  // TODO (yarden): these can be set at compile time. Technically this could
+  // just be an array, but I don't want to break old code that is known to work.
+  constexpr int inputDim = 48;
+  constexpr int outputDim = 12;
+  inputData_.resize(inputDim);
+  outputData_.resize(outputDim);
+  inputShape_ = {1, inputDim};
+  outputShape_ = {1, outputDim};
 }
 
 void NNPolicy::setActionNormalizer(const crl::dVector &obsJointAngleZeroOffset,
@@ -46,34 +54,17 @@ void NNPolicy::setActionNormalizer(const crl::dVector &obsJointAngleZeroOffset,
   }
 }
 
-bool NNPolicy::loadModelFromFile(const std::string &fileName) {
+void NNPolicy::loadModelFromFile(const std::filesystem::path &policyPath) {
   // load configuration
-  std::ifstream file(fileName);
+  std::ifstream file(policyPath.string());
   if (file.fail()) {
-    crl::Logger::print("Failed to load RL policy configuration file: %s",
-                       fileName.c_str());
-    file.close();
-    return false;
+    const std::string errorMsg =
+        "Failed to load RL policy: " + policyPath.string();
+    crl::Logger::print(errorMsg.c_str());
+    throw std::runtime_error(errorMsg);
   }
-  // parse configuration
-  const auto &conf = nlohmann::json::parse(file);
-  int inputDim = conf["input_dim"].get<int>();
-  int outputDim = conf["action_dim"].get<int>();
-  auto modelName = conf["model"].get<std::string>();
-  int historyLength = conf["history_length"].get<int>();
-  inputDim_ = inputDim;
-  outputDim_ = outputDim;
-  // set up data
-  inputData_.resize(inputDim);
-  outputData_.resize(outputDim);
-  inputShape_ = {1, inputDim};
-  outputShape_ = {1, outputDim};
-  obsHistory_.resize(53 * historyLength);
-  firstQuery = true;
   // load policy
-  auto fpath = std::filesystem::path(fileName);
-  auto dirPath = fpath.parent_path();
-  auto policyPath = dirPath / std::filesystem::path(modelName);
+  auto dirPath = policyPath.parent_path();
   auto memory_info =
       Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
   session_ =
@@ -84,7 +75,6 @@ bool NNPolicy::loadModelFromFile(const std::string &fileName) {
   outputTensor_ = Ort::Value::CreateTensor<float>(
       memory_info, outputData_.data(), outputData_.size(), outputShape_.data(),
       outputShape_.size());
-  return true;
 }
 
 void NNPolicy::drawDebugInfo(const crl::gui::Shader &, float) {}
@@ -224,36 +214,18 @@ void NNPolicy::computeControlSignals(double) {
   crl::utils::computeEulerAnglesFromQuaternion(
       state.baseOrientation, crl::V3D(0, 0, 1), crl::V3D(1, 0, 0),
       crl::V3D(0, 1, 0), roll, pitch, yaw);
-  crl::Quaternion yawQuat =
-      crl::utils::getRotationQuaternion(yaw, crl::V3D(0, 1, 0));
+  //   TODO (yarden): check if this is the correct way to calculate yaw
+  //   crl::Quaternion yawQuat =
+  //       crl::utils::getRotationQuaternion(yaw, crl::V3D(0, 1, 0));
   // privLatent is filled internally by the policy
   crl::dVector privLatent = crl::dVector::Zero(29);
-  // History
-  auto maskedObsProprio = obsProprio;
-  maskedObsProprio.segment(6, 2) << 0, 0;
-  if (firstQuery) {
-    // FIXME (yarden): This is hardcoded.
-    for (int i = 0; i < 4; ++i) {
-      obsHistory_.segment(i * obsProprio.size(), obsProprio.size()) =
-          maskedObsProprio;
-    }
-    firstQuery = false;
-  } else {
-    // push obs to obsHistory_
-    obsHistory_.segment(0, obsHistory_.size() - obsProprio.size()) =
-        obsHistory_.segment(obsProprio.size(),
-                            obsHistory_.size() - obsProprio.size());
-    obsHistory_.segment(obsHistory_.size() - obsProprio.size(),
-                        obsProprio.size()) = maskedObsProprio;
-  }
 
   // combine observations
   auto obsPriv = getPrivObservation();
   crl::dVector obs;
-  int obsDim = obsProprio.size() + obsPriv.size() + privLatent.size() +
-               obsHistory_.size();
+  int obsDim = obsProprio.size() + obsPriv.size() + privLatent.size();
   crl::resize(obs, obsDim);
-  obs << obsProprio, obsPriv, privLatent, obsHistory_;
+  obs << obsProprio, obsPriv, privLatent;
   // query the policy network
   crl::dVector output;
   crl::resize(output, 12);
