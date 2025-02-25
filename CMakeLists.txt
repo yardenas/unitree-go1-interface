@@ -34,7 +34,7 @@ install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
 # -----------------------------------------------------------------------------
 # executable
 add_executable(robot
-  src/main.cpp
+  src/robot_main.cpp
   src/Node.cpp
   src/NNPolicy.cpp
 )

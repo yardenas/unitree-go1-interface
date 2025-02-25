@@ -15,17 +15,14 @@ def generate_launch_description():
         [
             Node(
                 package="unitree_go1_interface",
-                namespace="go1_sim",
-                executable="sim",
+                executable="robot",
                 parameters=[config],
                 arguments=["--simulator"],
             ),
-            # Node(
-            #     package="parkour_unitree_monitor",
-            #     namespace="go1_sim",
-            #     executable="monitor",
-            #     parameters=[config],
-            #     remappings=[("monitor_joystick", "remote")],
-            # ),
+            Node(
+                package="crl_untitree_monitor",
+                executable="monitor",
+                remappings=[("monitor_joystick", "remote")],
+            ),
         ]
     )
