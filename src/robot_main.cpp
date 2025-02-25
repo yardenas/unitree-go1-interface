@@ -76,8 +76,11 @@ void run(bool useSimulator) {
         std::make_shared<crl::unitree::go1::Go1Node<States, Machines, 1>>(
             model, data, monitoring, machine.is_transitioning());
   }
+  const auto commNode =
+      std::make_shared<crl::unitree::commons::CommNode>(model, data);
   auto &executor = machine.get_executor();
   executor.add_node(robotNode);
+  executor.add_node(commNode);
   // main loop
   machine.spin();
   // clean up
@@ -94,8 +97,11 @@ bool parseCommandLine(int argc, char **argv) {
       "use simulator mode");
   boost::program_options::variables_map vm;
   try {
-    boost::program_options::store(
-        boost::program_options::parse_command_line(argc, argv, desc), vm);
+    boost::program_options::parsed_options parsed =
+        boost::program_options::command_line_parser(argc, argv)
+            .options(desc)
+            .allow_unregistered() // Ignore unknown args
+            .run();
     boost::program_options::notify(vm);
   } catch (const boost::program_options::error &ex) {
     std::cerr << "Error: " << ex.what() << "\n";
