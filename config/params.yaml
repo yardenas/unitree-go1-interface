@@ -1,6 +1,6 @@
 go1:
   ros__parameters:
-    policy_path: null
+    policy_path: data/mode.onnx
     default_pose:
       - 0.1
       - 0.9
