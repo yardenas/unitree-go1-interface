@@ -9,6 +9,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <build_depend>onnxruntime</build_depend>
   <build_depend>crl_unitree_go1</build_depend>
+  <build_depend>crl_unitree_commons</build_depend>
+  <build_depend>crl_unitree_simulator</build_depend>
   <exec_depend>onnxruntime</exec_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
