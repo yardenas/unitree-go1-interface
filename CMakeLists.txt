@@ -24,12 +24,10 @@ find_package(Boost REQUIRED COMPONENTS program_options)
 # -----------------------------------------------------------------------------
 
 # launch 
-# TODO (yarden): make a launch file.
-# install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
 
 # config 
-# TODO (yarden): figure this out later.
-# install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
 
 # -----------------------------------------------------------------------------
 # code
