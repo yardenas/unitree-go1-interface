@@ -15,12 +15,16 @@ Node::Node(
   auto paramDescription = rcl_interfaces::msg::ParameterDescriptor{};
   paramDescription.description = "Parameters for controlling the unitree go1.";
   paramDescription.read_only = true;
-  this->declare_parameter<std::string>("policyPath", paramDescription);
-  // TODO (yarden): get a better default
+  this->declare_parameter<std::string>("policy_path", paramDescription);
   this->declare_parameter<std::vector<double>>(
-      "defaultPose", {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, paramDescription);
+      "default_pose",
+      {0.1, 0.9, -1.8, -0.1, 0.9, -1.8, 0.1, 0.9, -1.8, -0.1, 0.9, -1.8},
+      paramDescription);
+  this->declare_parameter("act_scale", 0.5, paramDescription);
   const auto modelPath =
-      std::filesystem::path(this->get_parameter("policyPath").as_string());
-  controller_->loadModelFromFile(modelPath);
+      std::filesystem::path(this->get_parameter("policy_path").as_string());
+  controller_->setup(modelPath,
+                     this->get_parameter("default_pose").as_double_array(),
+                     this->get_parameter("act_scale").as_double());
 }
 } // namespace crl::unitree_go1_interface

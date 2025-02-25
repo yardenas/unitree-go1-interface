@@ -12,27 +12,17 @@
 namespace crl::unitree_go1_interface {
 
 class NNPolicy final : public crl::loco::LocomotionController {
-  const int FL_TO_FR_INDEX_MAP[12] = {
-      /* FR */
-      3, // hip
-      4, // thigh
-      5, // calf
-      /* FL */
-      0, // hip
-      1, // thigh
-      2, // calf
-      /* RR */
-      9,  // hip
-      10, // thigh
-      11, // calf
-      /* RL */
-      6, // hip
-      7, // thigh
-      8  // calf
-  };
   // FR_hip, FR_thigh, FR_calf, FL_hip, FL_thigh, FL_calf, RR_hip, RR_thigh,
   // RR_calf, RL_hip, RL_thigh, RL_calf JOINT_INDEX_MAP[CRL_INDEX] =
   // POLICY_INDEX
+  // mujoco playground observation order: {'FR_hip_joint': 0, 'FR_thigh_joint':
+  // 1, 'FR_calf_joint': 2, 'FL_hip_joint': 3, 'FL_thigh_joint': 4,
+  // 'FL_calf_joint': 5, 'RR_hip_joint': 6, 'RR_thigh_joint': 7,
+  // 'RR_calf_joint': 8, 'RL_hip_joint': 9, 'RL_thigh_joint': 10,
+  // 'RL_calf_joint': 11}
+  // mujoco playground actuators oder: {'FR_hip': 0, 'FR_thigh': 1, 'FR_calf':
+  // 2, 'FL_hip': 3, 'FL_thigh': 4, 'FL_calf': 5, 'RR_hip': 6, 'RR_thigh': 7,
+  // 'RR_calf': 8, 'RL_hip': 9, 'RL_thigh': 10, 'RL_calf': 11}
   const int JOINT_INDEX_MAP[12] = {
       /* hip */
       3, // fl
@@ -64,11 +54,15 @@ public:
 
   void allocateMemory();
 
-  void loadModelFromFile(const std::filesystem::path &policyPath);
   void drawDebugInfo(const crl::gui::Shader &shader,
                      float alpha = 1.0f) override;
+  void setup(const std::filesystem::path &policyPath,
+             const std::vector<double> &defaultPose, double actScale);
+
+  virtual ~NNPolicy() = default;
 
 private:
+  void loadModelFromFile(const std::filesystem::path &policyPath);
   void computeControlSignals(double dt) override;
 
   void applyControlSignals(double dt) override;
@@ -81,7 +75,7 @@ private:
 
   crl::dVector getGravity() const;
 
-  crl::dVector getJointAngles() const;
+  crl::dVector getPose() const;
 
   crl::dVector getJointVelocities() const;
 
@@ -93,11 +87,11 @@ private:
 
   crl::dVector queryNetwork(const crl::dVector &obs);
 
-  // cache
   crl::dVector action_;
-  int inputDim_;
-  int outputDim_;
-  crl::dVector privLatent = crl::dVector::Zero(29);
+  // TODO (yarden): these should be consts and be initialized in the
+  // constructor.
+  crl::dVector defaultPose_;
+  double actScale_;
   // onnx
   Ort::Env env_;
   Ort::Session session_{nullptr};
@@ -109,7 +103,6 @@ private:
   std::vector<float> outputData_;
   std::array<int64_t, 2> inputShape_;
   std::array<int64_t, 2> outputShape_;
-  // first run flags
 };
 } // namespace crl::unitree_go1_interface
 

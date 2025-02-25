@@ -15,6 +15,7 @@ endif()
 
 find_package(crl_unitree_go1 0.8.0 EXACT REQUIRED)
 find_package(onnxruntime 1.15.0 EXACT REQUIRED)
+find_package(crl_unitree_commons 0.8.0 EXACT REQUIRED)
 
 # -----------------------------------------------------------------------------
 # resource files
@@ -32,24 +33,28 @@ find_package(onnxruntime 1.15.0 EXACT REQUIRED)
 # code
 # -----------------------------------------------------------------------------
 # executable
-add_executable(robot src/main.cpp)
-
-target_include_directories(
-        robot
-        PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>" #
-        "$<INSTALL_INTERFACE:include>"
+add_executable(robot
+  src/main.cpp
+  src/Node.cpp
+  src/NNPolicy.cpp
 )
 
-ament_target_dependencies(robot 
-  crl_unitree_go1)
+target_include_directories(
+  robot
+  PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>" #
+  "$<INSTALL_INTERFACE:include>"
+)
+
+ament_target_dependencies(robot
+  crl_unitree_go1 onnxruntime crl_unitree_commons)
 
 install(
-        TARGETS robot
-        DESTINATION lib/${PROJECT_NAME}
+  TARGETS robot
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 # -----------------------------------------------------------------------------
 ament_export_dependencies(
-  crl_unitree_go1)
+  crl_unitree_go1 onnxruntime crl_unitree_commons)
 ament_package()

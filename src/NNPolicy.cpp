@@ -26,6 +26,16 @@ void NNPolicy::allocateMemory() {
   outputShape_ = {1, outputDim};
 }
 
+void NNPolicy::setup(const std::filesystem::path &policyPath,
+                     const std::vector<double> &defaultPose, double actScale) {
+  loadModelFromFile(policyPath);
+  defaultPose_.resize(defaultPose.size());
+  for (int i = 0; i < (int)defaultPose.size(); i++) {
+    defaultPose_[i] = defaultPose[i];
+  }
+  actScale_ = actScale;
+}
+
 void NNPolicy::loadModelFromFile(const std::filesystem::path &policyPath) {
   // load configuration
   std::ifstream file(policyPath.string());
@@ -64,25 +74,28 @@ crl::dVector NNPolicy::getGyro() const {
 
 crl::dVector NNPolicy::getGravity() const {
   const auto &state = data->getLeggedRobotState();
-  //   TODO (yarden): isn't this just inverse()?
   return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -9.81);
 }
 
-crl::dVector NNPolicy::getJointAngles() const {
+crl::dVector NNPolicy::getPose() const {
+  // TODO (yarden): make sure that the orders of indexed/joints match the ones
+  // in mujoco playground
+  // Is it radians or degrees---quick check says it's radians, but need to
+  // double check.
   const auto &state = data->getLeggedRobotState();
-  crl::dVector jointAngles;
-  crl::resize(jointAngles, state.jointStates.size());
-  for (int i = 0; i < (int)state.jointStates.size(); i++) {
-    jointAngles[i] = state.jointStates[i].jointPos;
+  crl::dVector pose;
+  crl::resize(pose, state.jointStates.size());
+  for (size_t i = 0; i < state.jointStates.size(); i++) {
+    pose[i] = state.jointStates[i].jointPos - defaultPose_[i];
   }
-  return jointAngles;
+  return pose;
 }
 
 crl::dVector NNPolicy::getJointVelocities() const {
   const auto &state = data->getLeggedRobotState();
   crl::dVector jointVelocities;
   crl::resize(jointVelocities, state.jointStates.size());
-  for (int i = 0; i < (int)state.jointStates.size(); i++) {
+  for (size_t i = 0; i < state.jointStates.size(); i++) {
     jointVelocities[i] = state.jointStates[i].jointVel;
   }
   return jointVelocities;
@@ -112,7 +125,7 @@ crl::dVector NNPolicy::getObservation() const {
   const crl::dVector obsAction = action_;
   const auto gyro = getGyro();
   const auto gravity = getGravity();
-  const auto jointAngles = getJointAngles();
+  const auto jointAngles = getPose();
   const auto jointVelocities = getJointVelocities();
   const auto linearVelocity = getLinearVelocity();
   const auto command = getCommand();
@@ -189,23 +202,26 @@ crl::dVector NNPolicy::getJointTargets() const {
       go2_Rear_Thigh_max, go2_Calf_max, go2_Hip_max, go2_Rear_Thigh_max,
       go2_Calf_max;
 
-  crl::dVector SOFT_MIN_JOINT_LIMIT = crl::dVector::Zero(12);
-  crl::dVector SOFT_MAX_JOINT_LIMIT = crl::dVector::Zero(12);
+  crl::dVector softMinJointLimit = crl::dVector::Zero(12);
+  crl::dVector softMaxJointLimit = crl::dVector::Zero(12);
   double softDofPosLimit = 0.8;
 
   for (int i = 0; i < 12; i++) {
     double m = (MIN_JOINT_LIMIT[i] + MAX_JOINT_LIMIT[i]) / 2;
     double r = MAX_JOINT_LIMIT[i] - MIN_JOINT_LIMIT[i];
-    SOFT_MIN_JOINT_LIMIT[i] = m - 0.5 * r * softDofPosLimit;
-    SOFT_MAX_JOINT_LIMIT[i] = m + 0.5 * r * softDofPosLimit;
+    softMinJointLimit[i] = m - 0.5 * r * softDofPosLimit;
+    softMaxJointLimit[i] = m + 0.5 * r * softDofPosLimit;
   }
   // clip joint target
   for (int i = 0; i < 12; i++) {
-    if (jointTarget[i] < SOFT_MIN_JOINT_LIMIT[i]) {
-      jointTarget[i] = SOFT_MIN_JOINT_LIMIT[i];
-    } else if (jointTarget[i] > SOFT_MAX_JOINT_LIMIT[i]) {
-      jointTarget[i] = SOFT_MAX_JOINT_LIMIT[i];
+    if (jointTarget[i] < softMinJointLimit[i]) {
+      jointTarget[i] = softMinJointLimit[i];
+    } else if (jointTarget[i] > softMaxJointLimit[i]) {
+      jointTarget[i] = softMaxJointLimit[i];
     }
+  }
+  for (int i = 0; i < 12; i++) {
+    jointTarget[i] = defaultPose_[i] + jointTarget[i] * actScale_;
   }
   // jointTarget
   return jointTarget;
@@ -222,7 +238,6 @@ crl::dVector NNPolicy::queryNetwork(const crl::dVector &obs) {
   Ort::RunOptions runOptions;
   session_.Run(runOptions, inputNames, &inputTensor_, 1, outputNames,
                &outputTensor_, 1);
-
   // populate output
   crl::dVector out;
   crl::resize(out, outputData_.size());
