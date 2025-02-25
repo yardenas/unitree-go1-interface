@@ -20,7 +20,7 @@ def generate_launch_description():
                 arguments=["--simulator"],
             ),
             Node(
-                package="crl_untitree_monitor",
+                package="crl_unitree_monitor",
                 executable="monitor",
                 remappings=[("monitor_joystick", "remote")],
             ),
