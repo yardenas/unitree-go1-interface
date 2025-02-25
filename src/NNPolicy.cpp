@@ -77,23 +77,25 @@ crl::dVector NNPolicy::getGravity() const {
   return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -9.81);
 }
 
-crl::dVector NNPolicy::getJointAngles() const {
+crl::dVector NNPolicy::getPose() const {
   // TODO (yarden): make sure that the orders of indexed/joints match the ones
   // in mujoco playground
+  // Is it radians or degrees---quick check says it's radians, but need to
+  // double check.
   const auto &state = data->getLeggedRobotState();
-  crl::dVector jointAngles;
-  crl::resize(jointAngles, state.jointStates.size());
-  for (int i = 0; i < (int)state.jointStates.size(); i++) {
-    jointAngles[i] = state.jointStates[i].jointPos - defaultPose_[i];
+  crl::dVector pose;
+  crl::resize(pose, state.jointStates.size());
+  for (size_t i = 0; i < state.jointStates.size(); i++) {
+    pose[i] = state.jointStates[i].jointPos - defaultPose_[i];
   }
-  return jointAngles;
+  return pose;
 }
 
 crl::dVector NNPolicy::getJointVelocities() const {
   const auto &state = data->getLeggedRobotState();
   crl::dVector jointVelocities;
   crl::resize(jointVelocities, state.jointStates.size());
-  for (int i = 0; i < (int)state.jointStates.size(); i++) {
+  for (size_t i = 0; i < state.jointStates.size(); i++) {
     jointVelocities[i] = state.jointStates[i].jointVel;
   }
   return jointVelocities;
@@ -123,7 +125,7 @@ crl::dVector NNPolicy::getObservation() const {
   const crl::dVector obsAction = action_;
   const auto gyro = getGyro();
   const auto gravity = getGravity();
-  const auto jointAngles = getJointAngles();
+  const auto jointAngles = getPose();
   const auto jointVelocities = getJointVelocities();
   const auto linearVelocity = getLinearVelocity();
   const auto command = getCommand();

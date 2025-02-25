@@ -16,10 +16,6 @@ public:
            &data, //
        const std::string &nodeName = "controller");
   virtual ~Node() = default;
-
-private:
-  const std::shared_ptr<crl::unitree::commons::UnitreeLeggedRobotData>
-      sensorData_;
 };
 } // namespace crl::unitree_go1_interface
 
