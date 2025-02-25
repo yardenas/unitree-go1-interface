@@ -228,8 +228,8 @@ crl::dVector NNPolicy::getJointTargets() const {
 }
 
 crl::dVector NNPolicy::queryNetwork(const crl::dVector &obs) {
-  const char *inputNames[] = {"input"};
-  const char *outputNames[] = {"action"};
+  const char *inputNames[] = {"obs"};
+  const char *outputNames[] = {"continuous_actions"};
   // populate input
   for (int i = 0; i < obs.size(); i++) {
     inputData_[i] = obs[i];
