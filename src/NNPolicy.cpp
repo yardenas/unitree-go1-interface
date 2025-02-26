@@ -74,7 +74,7 @@ crl::dVector NNPolicy::getGyro() const {
 
 crl::dVector NNPolicy::getGravity() const {
   const auto &state = data->getLeggedRobotState();
-  return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -9.81);
+  return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -1.);
 }
 
 crl::dVector NNPolicy::getPose() const {
