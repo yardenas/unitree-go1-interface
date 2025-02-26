@@ -160,7 +160,7 @@ void NNPolicy::applyControlSignals(double) {
   crl::dVector jointTargets = getJointTargets();
   for (int i = 0; i < robot->getJointCount(); i++) {
     // use POSITION_MODE for simulation
-    // FIXME (yarden): this should be a parameter
+    // FIXME (yarden): this should be a parameter or just fixed for this task?
     // robot->getJoint(i)->controlMode =
     // crl::loco::RBJointControlMode::FORCE_MODE;
     robot->getJoint(i)->controlMode =
