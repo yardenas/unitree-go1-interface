@@ -14,7 +14,7 @@ public:
   Node(const crl::unitree::commons::UnitreeRobotModel &model, //
        const std::shared_ptr<crl::unitree::commons::UnitreeLeggedRobotData>
            &data, //
-       const std::string &nodeName = "controller");
+       const std::string &nodeName = "controller", bool useSimulator = false);
   virtual ~Node() = default;
 };
 } // namespace crl::unitree_go1_interface

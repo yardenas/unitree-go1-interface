@@ -56,7 +56,8 @@ void run(bool useSimulator) {
       });
   auto m4 =
       crl::fsm::make_non_persistent_ps<Machines::ONBOARD, States::WALK>([&]() {
-        return std::make_shared<crl::unitree_go1_interface::Node>(model, data);
+        return std::make_shared<crl::unitree_go1_interface::Node>(
+            model, data, "controller", useSimulator);
       });
   auto s_cols =
       crl::fsm::make_states_collection_for_machine<Machines::ONBOARD, States>(

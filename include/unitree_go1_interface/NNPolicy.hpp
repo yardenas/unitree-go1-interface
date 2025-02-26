@@ -57,7 +57,8 @@ public:
   void drawDebugInfo(const crl::gui::Shader &shader,
                      float alpha = 1.0f) override;
   void setup(const std::filesystem::path &policyPath,
-             const std::vector<double> &defaultPose, double actScale);
+             const std::vector<double> &defaultPose, double actScale,
+             bool useSimulator);
 
   virtual ~NNPolicy() = default;
 
@@ -103,6 +104,7 @@ private:
   std::vector<float> outputData_;
   std::array<int64_t, 2> inputShape_;
   std::array<int64_t, 2> outputShape_;
+  bool useSimulator_ = false;
 };
 } // namespace crl::unitree_go1_interface
 

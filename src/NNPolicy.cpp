@@ -28,7 +28,9 @@ void NNPolicy::allocateMemory() {
 }
 
 void NNPolicy::setup(const std::filesystem::path &policyPath,
-                     const std::vector<double> &defaultPose, double actScale) {
+                     const std::vector<double> &defaultPose, double actScale,
+                     bool useSimulator) {
+  useSimulator_ = useSimulator;
   loadModelFromFile(policyPath);
   defaultPose_.resize(defaultPose.size());
   for (int i = 0; i < (int)defaultPose.size(); i++) {
@@ -153,12 +155,13 @@ void NNPolicy::computeControlSignals(double) {
 void NNPolicy::applyControlSignals(double) {
   crl::dVector jointTargets = getJointTargets();
   for (int i = 0; i < robot->getJointCount(); i++) {
-    // use POSITION_MODE for simulation
-    // FIXME (yarden): this should be a parameter or just fixed for this task?
-    // robot->getJoint(i)->controlMode =
-    // crl::loco::RBJointControlMode::FORCE_MODE;
-    robot->getJoint(i)->controlMode =
-        crl::loco::RBJointControlMode::POSITION_MODE;
+    if (useSimulator_) {
+      robot->getJoint(i)->controlMode =
+          crl::loco::RBJointControlMode::POSITION_MODE;
+    } else {
+      robot->getJoint(i)->controlMode =
+          crl::loco::RBJointControlMode::FORCE_MODE;
+    }
     robot->getJoint(i)->desiredControlPosition =
         jointTargets[JOINT_INDEX_MAP[i]];
     robot->getJoint(i)->desiredControlSpeed = 0;
