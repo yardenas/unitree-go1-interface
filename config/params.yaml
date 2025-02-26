@@ -24,7 +24,7 @@
 
   controller:
     ros__parameters:
-      time_step_size: 0.002
+      time_step_size: 0.02
       gainBodyPosTangential: 500.
       gainBodyVelTangential: 30.
       gainBodyPosVertical: 500.
