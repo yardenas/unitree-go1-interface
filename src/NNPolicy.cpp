@@ -86,7 +86,11 @@ crl::dVector NNPolicy::getPose() const {
   crl::dVector pose;
   crl::resize(pose, state.jointStates.size());
   for (size_t i = 0; i < state.jointStates.size(); i++) {
-    pose[i] = state.jointStates[i].jointPos - defaultPose_[i];
+    // These poses need to be remapped to the correct order
+    pose[JOINT_INDEX_MAP[i]] = state.jointStates[i].jointPos;
+  }
+  for (int i = 0; i < pose.size(); i++) {
+    pose[i] -= defaultPose_[i];
   }
   return pose;
 }
@@ -96,7 +100,7 @@ crl::dVector NNPolicy::getJointVelocities() const {
   crl::dVector jointVelocities;
   crl::resize(jointVelocities, state.jointStates.size());
   for (size_t i = 0; i < state.jointStates.size(); i++) {
-    jointVelocities[i] = state.jointStates[i].jointVel;
+    jointVelocities[JOINT_INDEX_MAP[i]] = state.jointStates[i].jointVel;
   }
   return jointVelocities;
 }
@@ -152,9 +156,14 @@ void NNPolicy::applyControlSignals(double) {
   crl::dVector jointTargets = getJointTargets();
   for (int i = 0; i < robot->getJointCount(); i++) {
     // use POSITION_MODE for simulation
-    robot->getJoint(i)->controlMode = crl::loco::RBJointControlMode::FORCE_MODE;
+    // FIXME (yarden): this should be a parameter
+    // robot->getJoint(i)->controlMode =
+    // crl::loco::RBJointControlMode::FORCE_MODE;
+    robot->getJoint(i)->controlMode =
+        crl::loco::RBJointControlMode::POSITION_MODE;
     robot->getJoint(i)->desiredControlPosition =
         jointTargets[JOINT_INDEX_MAP[i]];
+    // TODO (yarden): double check those zeros
     robot->getJoint(i)->desiredControlSpeed = 0;
     robot->getJoint(i)->desiredControlTorque = 0;
   }
@@ -219,6 +228,7 @@ crl::dVector NNPolicy::getJointTargets() const {
     }
   }
   for (int i = 0; i < 12; i++) {
+    // TODO (yarden): not sure if we need here defaultPose
     jointTarget[i] = defaultPose_[i] + jointTarget[i] * actScale_;
   }
   return jointTarget;
