@@ -181,34 +181,32 @@ crl::dVector NNPolicy::getJointTargets() const {
   // jointTarget: (FR_hip, FR_thigh, FR_calf), (FL_hip, FL_thigh, FL_calf),
   // ...
 
-  constexpr double go2_Hip_max = 1.0472;         // unit:radian ( = 48   degree)
-  constexpr double go2_Hip_min = -1.0472;        // unit:radian ( = -48  degree)
-  constexpr double go2_Front_Thigh_max = 3.4907; // unit:radian ( = 200  degree)
-  constexpr double go2_Front_Thigh_min = -1.5708; // unit:radian ( = -90 degree)
-  constexpr double go2_Rear_Thigh_max = 4.5379;   // unit:radian ( = 260 degree)
-  constexpr double go2_Rear_Thigh_min = -0.5236; // unit:radian ( = -30  degree)
-  constexpr double go2_Calf_max = -0.83776;      // unit:radian ( = -48  degree)
-  constexpr double go2_Calf_min = -2.7227;       // unit:radian ( = -156 degree)
+  constexpr double go2HipMax = 1.0472;         // unit:radian ( = 48   degree)
+  constexpr double go2HipMin = -1.0472;        // unit:radian ( = -48  degree)
+  constexpr double go2FrontThighMax = 3.4907;  // unit:radian ( = 200  degree)
+  constexpr double go2FrontThighMin = -1.5708; // unit:radian ( = -90 degree)
+  constexpr double go2RearThighMax = 4.5379;   // unit:radian ( = 260 degree)
+  constexpr double go2RearThighMin = -0.5236;  // unit:radian ( = -30  degree)
+  constexpr double go2CalfMax = -0.83776;      // unit:radian ( = -48  degree)
+  constexpr double go2CalfMin = -2.7227;       // unit:radian ( = -156 degree)
 
-  crl::dVector MIN_JOINT_LIMIT = crl::dVector::Zero(12);
-  MIN_JOINT_LIMIT << go2_Hip_min, go2_Front_Thigh_min, go2_Calf_min,
-      go2_Hip_min, go2_Front_Thigh_min, go2_Calf_min, go2_Hip_min,
-      go2_Rear_Thigh_min, go2_Calf_min, go2_Hip_min, go2_Rear_Thigh_min,
-      go2_Calf_min;
+  crl::dVector minJointLimit = crl::dVector::Zero(12);
+  minJointLimit << go2HipMin, go2FrontThighMin, go2CalfMin, go2HipMin,
+      go2FrontThighMin, go2CalfMin, go2HipMin, go2RearThighMin, go2CalfMin,
+      go2HipMin, go2RearThighMin, go2CalfMin;
 
-  crl::dVector MAX_JOINT_LIMIT = crl::dVector::Zero(12);
-  MAX_JOINT_LIMIT << go2_Hip_max, go2_Front_Thigh_max, go2_Calf_max,
-      go2_Hip_max, go2_Front_Thigh_max, go2_Calf_max, go2_Hip_max,
-      go2_Rear_Thigh_max, go2_Calf_max, go2_Hip_max, go2_Rear_Thigh_max,
-      go2_Calf_max;
+  crl::dVector maxJointLimit = crl::dVector::Zero(12);
+  maxJointLimit << go2HipMax, go2FrontThighMax, go2CalfMax, go2HipMax,
+      go2FrontThighMax, go2CalfMax, go2HipMax, go2RearThighMax, go2CalfMax,
+      go2HipMax, go2RearThighMax, go2CalfMax;
 
   crl::dVector softMinJointLimit = crl::dVector::Zero(12);
   crl::dVector softMaxJointLimit = crl::dVector::Zero(12);
   double softDofPosLimit = 0.8;
 
   for (int i = 0; i < 12; i++) {
-    double m = (MIN_JOINT_LIMIT[i] + MAX_JOINT_LIMIT[i]) / 2;
-    double r = MAX_JOINT_LIMIT[i] - MIN_JOINT_LIMIT[i];
+    double m = (minJointLimit[i] + maxJointLimit[i]) / 2;
+    double r = maxJointLimit[i] - minJointLimit[i];
     softMinJointLimit[i] = m - 0.5 * r * softDofPosLimit;
     softMaxJointLimit[i] = m + 0.5 * r * softDofPosLimit;
   }
@@ -223,7 +221,6 @@ crl::dVector NNPolicy::getJointTargets() const {
   for (int i = 0; i < 12; i++) {
     jointTarget[i] = defaultPose_[i] + jointTarget[i] * actScale_;
   }
-  // jointTarget
   return jointTarget;
 }
 
