@@ -79,12 +79,6 @@ crl::dVector NNPolicy::getGravity() const {
 }
 
 crl::dVector NNPolicy::getPose() const {
-  // TODO (yarden): make sure that the orders of indexed/joints match the ones
-  // in mujoco playground
-  // Is it radians or degrees---quick check says it's radians, but need to
-  // double check. If radians -- is it -pi to pi or 0 to 2pi?
-  // also make sure the directions correspond to each other (should we add minus
-  // sign somewhere?)
   const auto &state = data->getLeggedRobotState();
   crl::dVector pose;
   crl::resize(pose, state.jointStates.size());
@@ -167,7 +161,6 @@ void NNPolicy::applyControlSignals(double) {
         crl::loco::RBJointControlMode::POSITION_MODE;
     robot->getJoint(i)->desiredControlPosition =
         jointTargets[JOINT_INDEX_MAP[i]];
-    // TODO (yarden): double check those zeros
     robot->getJoint(i)->desiredControlSpeed = 0;
     robot->getJoint(i)->desiredControlTorque = 0;
   }
