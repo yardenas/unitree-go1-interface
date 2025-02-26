@@ -11,6 +11,7 @@
 #include <crl_unitree_go1/Go1Node.h>
 #include <crl_unitree_simulator/SimNode.h>
 #include <memory>
+#include <rclcpp/logger.hpp>
 
 #include "unitree_go1_interface/Node.hpp"
 
@@ -74,10 +75,12 @@ void run(bool useSimulator) {
   std::shared_ptr<crl::unitree::commons::RobotNode<States, Machines, 1>>
       robotNode;
   if (useSimulator) {
+    RCLCPP_INFO(rclcpp::get_logger("robot"), "Using simulator mode");
     robotNode =
         std::make_shared<crl::unitree::simulator::SimNode<States, Machines, 1>>(
             model, data, monitoring, machine.is_transitioning());
   } else {
+    RCLCPP_INFO(rclcpp::get_logger("robot"), "Using real robot mode");
     robotNode =
         std::make_shared<crl::unitree::go1::Go1Node<States, Machines, 1>>(
             model, data, monitoring, machine.is_transitioning());
@@ -98,7 +101,6 @@ void run(bool useSimulator) {
 namespace {
 bool parseCommandLine(int argc, char **argv) {
   bool useSimulator = false;
-
   boost::program_options::options_description desc("Allowed options");
   desc.add_options()("help,h", "produce help message")(
       "simulator,s", boost::program_options::bool_switch(&useSimulator),
@@ -108,8 +110,9 @@ bool parseCommandLine(int argc, char **argv) {
     boost::program_options::parsed_options parsed =
         boost::program_options::command_line_parser(argc, argv)
             .options(desc)
-            .allow_unregistered() // Ignore unknown args
+            .allow_unregistered()
             .run();
+    boost::program_options::store(parsed, vm);
     boost::program_options::notify(vm);
   } catch (const boost::program_options::error &ex) {
     std::cerr << "Error: " << ex.what() << "\n";
@@ -125,8 +128,8 @@ bool parseCommandLine(int argc, char **argv) {
 } // namespace
 
 int main(int argc, char **argv) {
-  rclcpp::init(argc, argv);
   const bool useSimulator = parseCommandLine(argc, argv);
+  rclcpp::init(argc, argv);
   crl::unitree_go1_interface::run(useSimulator);
   rclcpp::shutdown();
   return 0;
