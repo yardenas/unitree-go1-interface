@@ -16,6 +16,7 @@ NNPolicy::NNPolicy(const std::shared_ptr<crl::loco::LeggedRobot> &robot,
 
 void NNPolicy::allocateMemory() {
   crl::resize(action_, robot->getJointCount());
+  action_.setZero();
   // TODO (yarden): these can be set at compile time. Technically this could
   // just be an array, but I don't want to break old code that is known to work.
   constexpr int inputDim = 48;
@@ -81,7 +82,9 @@ crl::dVector NNPolicy::getPose() const {
   // TODO (yarden): make sure that the orders of indexed/joints match the ones
   // in mujoco playground
   // Is it radians or degrees---quick check says it's radians, but need to
-  // double check.
+  // double check. If radians -- is it -pi to pi or 0 to 2pi?
+  // also make sure the directions correspond to each other (should we add minus
+  // sign somewhere?)
   const auto &state = data->getLeggedRobotState();
   crl::dVector pose;
   crl::resize(pose, state.jointStates.size());
@@ -109,6 +112,7 @@ crl::dVector NNPolicy::getLinearVelocity() const {
   const auto &state = data->getLeggedRobotState();
   // TODO (yarden): double-check this. The velocity should be in the local
   // frame so it might be that the orientation is not relevant
+  // should also map to the correct order.
   crl::V3D baseLinVel = state.baseOrientation.inverse() * state.baseVelocity;
   crl::dVector linVel(3);
   for (int i = 0; i < 3; i++) {
@@ -185,53 +189,7 @@ void NNPolicy::populateData() {
 }
 
 crl::dVector NNPolicy::getJointTargets() const {
-  crl::dVector scaledAction = action_;
-  crl::dVector jointTarget = action_;
-  // jointTarget: (FR_hip, FR_thigh, FR_calf), (FL_hip, FL_thigh, FL_calf),
-  // ...
-
-  constexpr double go2HipMax = 1.0472;         // unit:radian ( = 48   degree)
-  constexpr double go2HipMin = -1.0472;        // unit:radian ( = -48  degree)
-  constexpr double go2FrontThighMax = 3.4907;  // unit:radian ( = 200  degree)
-  constexpr double go2FrontThighMin = -1.5708; // unit:radian ( = -90 degree)
-  constexpr double go2RearThighMax = 4.5379;   // unit:radian ( = 260 degree)
-  constexpr double go2RearThighMin = -0.5236;  // unit:radian ( = -30  degree)
-  constexpr double go2CalfMax = -0.83776;      // unit:radian ( = -48  degree)
-  constexpr double go2CalfMin = -2.7227;       // unit:radian ( = -156 degree)
-
-  crl::dVector minJointLimit = crl::dVector::Zero(12);
-  minJointLimit << go2HipMin, go2FrontThighMin, go2CalfMin, go2HipMin,
-      go2FrontThighMin, go2CalfMin, go2HipMin, go2RearThighMin, go2CalfMin,
-      go2HipMin, go2RearThighMin, go2CalfMin;
-
-  crl::dVector maxJointLimit = crl::dVector::Zero(12);
-  maxJointLimit << go2HipMax, go2FrontThighMax, go2CalfMax, go2HipMax,
-      go2FrontThighMax, go2CalfMax, go2HipMax, go2RearThighMax, go2CalfMax,
-      go2HipMax, go2RearThighMax, go2CalfMax;
-
-  crl::dVector softMinJointLimit = crl::dVector::Zero(12);
-  crl::dVector softMaxJointLimit = crl::dVector::Zero(12);
-  double softDofPosLimit = 0.8;
-
-  for (int i = 0; i < 12; i++) {
-    double m = (minJointLimit[i] + maxJointLimit[i]) / 2;
-    double r = maxJointLimit[i] - minJointLimit[i];
-    softMinJointLimit[i] = m - 0.5 * r * softDofPosLimit;
-    softMaxJointLimit[i] = m + 0.5 * r * softDofPosLimit;
-  }
-  // clip joint target
-  for (int i = 0; i < 12; i++) {
-    if (jointTarget[i] < softMinJointLimit[i]) {
-      jointTarget[i] = softMinJointLimit[i];
-    } else if (jointTarget[i] > softMaxJointLimit[i]) {
-      jointTarget[i] = softMaxJointLimit[i];
-    }
-  }
-  for (int i = 0; i < 12; i++) {
-    // TODO (yarden): not sure if we need here defaultPose
-    jointTarget[i] = defaultPose_[i] + jointTarget[i] * actScale_;
-  }
-  return jointTarget;
+  return action_ * actScale_ + defaultPose_;
 }
 
 crl::dVector NNPolicy::queryNetwork(const crl::dVector &obs) {
