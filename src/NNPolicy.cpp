@@ -16,6 +16,7 @@ NNPolicy::NNPolicy(const std::shared_ptr<crl::loco::LeggedRobot> &robot,
 
 void NNPolicy::allocateMemory() {
   crl::resize(action_, robot->getJointCount());
+  action_.setZero();
   // TODO (yarden): these can be set at compile time. Technically this could
   // just be an array, but I don't want to break old code that is known to work.
   constexpr int inputDim = 48;
@@ -74,19 +75,19 @@ crl::dVector NNPolicy::getGyro() const {
 
 crl::dVector NNPolicy::getGravity() const {
   const auto &state = data->getLeggedRobotState();
-  return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -9.81);
+  return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -1.);
 }
 
 crl::dVector NNPolicy::getPose() const {
-  // TODO (yarden): make sure that the orders of indexed/joints match the ones
-  // in mujoco playground
-  // Is it radians or degrees---quick check says it's radians, but need to
-  // double check.
   const auto &state = data->getLeggedRobotState();
   crl::dVector pose;
   crl::resize(pose, state.jointStates.size());
   for (size_t i = 0; i < state.jointStates.size(); i++) {
-    pose[i] = state.jointStates[i].jointPos - defaultPose_[i];
+    // These poses need to be remapped to the correct order
+    pose[JOINT_INDEX_MAP[i]] = state.jointStates[i].jointPos;
+  }
+  for (int i = 0; i < pose.size(); i++) {
+    pose[i] -= defaultPose_[i];
   }
   return pose;
 }
@@ -96,7 +97,7 @@ crl::dVector NNPolicy::getJointVelocities() const {
   crl::dVector jointVelocities;
   crl::resize(jointVelocities, state.jointStates.size());
   for (size_t i = 0; i < state.jointStates.size(); i++) {
-    jointVelocities[i] = state.jointStates[i].jointVel;
+    jointVelocities[JOINT_INDEX_MAP[i]] = state.jointStates[i].jointVel;
   }
   return jointVelocities;
 }
@@ -105,6 +106,7 @@ crl::dVector NNPolicy::getLinearVelocity() const {
   const auto &state = data->getLeggedRobotState();
   // TODO (yarden): double-check this. The velocity should be in the local
   // frame so it might be that the orientation is not relevant
+  // should also map to the correct order.
   crl::V3D baseLinVel = state.baseOrientation.inverse() * state.baseVelocity;
   crl::dVector linVel(3);
   for (int i = 0; i < 3; i++) {
@@ -152,7 +154,11 @@ void NNPolicy::applyControlSignals(double) {
   crl::dVector jointTargets = getJointTargets();
   for (int i = 0; i < robot->getJointCount(); i++) {
     // use POSITION_MODE for simulation
-    robot->getJoint(i)->controlMode = crl::loco::RBJointControlMode::FORCE_MODE;
+    // FIXME (yarden): this should be a parameter or just fixed for this task?
+    // robot->getJoint(i)->controlMode =
+    // crl::loco::RBJointControlMode::FORCE_MODE;
+    robot->getJoint(i)->controlMode =
+        crl::loco::RBJointControlMode::POSITION_MODE;
     robot->getJoint(i)->desiredControlPosition =
         jointTargets[JOINT_INDEX_MAP[i]];
     robot->getJoint(i)->desiredControlSpeed = 0;
@@ -176,60 +182,12 @@ void NNPolicy::populateData() {
 }
 
 crl::dVector NNPolicy::getJointTargets() const {
-  crl::dVector scaledAction = action_;
-  crl::dVector jointTarget = action_;
-  // jointTarget: (FR_hip, FR_thigh, FR_calf), (FL_hip, FL_thigh, FL_calf),
-  // ...
-
-  constexpr double go2_Hip_max = 1.0472;         // unit:radian ( = 48   degree)
-  constexpr double go2_Hip_min = -1.0472;        // unit:radian ( = -48  degree)
-  constexpr double go2_Front_Thigh_max = 3.4907; // unit:radian ( = 200  degree)
-  constexpr double go2_Front_Thigh_min = -1.5708; // unit:radian ( = -90 degree)
-  constexpr double go2_Rear_Thigh_max = 4.5379;   // unit:radian ( = 260 degree)
-  constexpr double go2_Rear_Thigh_min = -0.5236; // unit:radian ( = -30  degree)
-  constexpr double go2_Calf_max = -0.83776;      // unit:radian ( = -48  degree)
-  constexpr double go2_Calf_min = -2.7227;       // unit:radian ( = -156 degree)
-
-  crl::dVector MIN_JOINT_LIMIT = crl::dVector::Zero(12);
-  MIN_JOINT_LIMIT << go2_Hip_min, go2_Front_Thigh_min, go2_Calf_min,
-      go2_Hip_min, go2_Front_Thigh_min, go2_Calf_min, go2_Hip_min,
-      go2_Rear_Thigh_min, go2_Calf_min, go2_Hip_min, go2_Rear_Thigh_min,
-      go2_Calf_min;
-
-  crl::dVector MAX_JOINT_LIMIT = crl::dVector::Zero(12);
-  MAX_JOINT_LIMIT << go2_Hip_max, go2_Front_Thigh_max, go2_Calf_max,
-      go2_Hip_max, go2_Front_Thigh_max, go2_Calf_max, go2_Hip_max,
-      go2_Rear_Thigh_max, go2_Calf_max, go2_Hip_max, go2_Rear_Thigh_max,
-      go2_Calf_max;
-
-  crl::dVector softMinJointLimit = crl::dVector::Zero(12);
-  crl::dVector softMaxJointLimit = crl::dVector::Zero(12);
-  double softDofPosLimit = 0.8;
-
-  for (int i = 0; i < 12; i++) {
-    double m = (MIN_JOINT_LIMIT[i] + MAX_JOINT_LIMIT[i]) / 2;
-    double r = MAX_JOINT_LIMIT[i] - MIN_JOINT_LIMIT[i];
-    softMinJointLimit[i] = m - 0.5 * r * softDofPosLimit;
-    softMaxJointLimit[i] = m + 0.5 * r * softDofPosLimit;
-  }
-  // clip joint target
-  for (int i = 0; i < 12; i++) {
-    if (jointTarget[i] < softMinJointLimit[i]) {
-      jointTarget[i] = softMinJointLimit[i];
-    } else if (jointTarget[i] > softMaxJointLimit[i]) {
-      jointTarget[i] = softMaxJointLimit[i];
-    }
-  }
-  for (int i = 0; i < 12; i++) {
-    jointTarget[i] = defaultPose_[i] + jointTarget[i] * actScale_;
-  }
-  // jointTarget
-  return jointTarget;
+  return action_ * actScale_ + defaultPose_;
 }
 
 crl::dVector NNPolicy::queryNetwork(const crl::dVector &obs) {
-  const char *inputNames[] = {"input"};
-  const char *outputNames[] = {"action"};
+  const char *inputNames[] = {"obs"};
+  const char *outputNames[] = {"continuous_actions"};
   // populate input
   for (int i = 0; i < obs.size(); i++) {
     inputData_[i] = obs[i];

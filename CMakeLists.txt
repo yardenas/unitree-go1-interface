@@ -16,25 +16,28 @@ endif()
 find_package(crl_unitree_go1 0.8.0 EXACT REQUIRED)
 find_package(onnxruntime 1.15.0 EXACT REQUIRED)
 find_package(crl_unitree_commons 0.8.0 EXACT REQUIRED)
+find_package(crl_unitree_simulator 0.8.0 EXACT REQUIRED)
+find_package(Boost REQUIRED COMPONENTS program_options)
 
 # -----------------------------------------------------------------------------
 # resource files
 # -----------------------------------------------------------------------------
 
 # launch 
-# TODO (yarden): make a launch file.
-# install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
 
 # config 
-# TODO (yarden): figure this out later.
-# install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
+
+# data
+install(DIRECTORY data DESTINATION share/${PROJECT_NAME}/)
 
 # -----------------------------------------------------------------------------
 # code
 # -----------------------------------------------------------------------------
 # executable
 add_executable(robot
-  src/main.cpp
+  src/robot_main.cpp
   src/Node.cpp
   src/NNPolicy.cpp
 )
@@ -47,7 +50,11 @@ target_include_directories(
 )
 
 ament_target_dependencies(robot
-  crl_unitree_go1 onnxruntime crl_unitree_commons)
+  crl_unitree_go1 onnxruntime crl_unitree_commons crl_unitree_simulator)
+
+target_link_libraries(robot
+  Boost::program_options
+)
 
 install(
   TARGETS robot
@@ -56,5 +63,5 @@ install(
 
 # -----------------------------------------------------------------------------
 ament_export_dependencies(
-  crl_unitree_go1 onnxruntime crl_unitree_commons)
+  crl_unitree_go1 onnxruntime crl_unitree_commons crl_unitree_simulator)
 ament_package()

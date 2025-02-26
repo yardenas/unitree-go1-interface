@@ -1,15 +1,127 @@
-policy_path: null
-default_pose:
-  - 0.1
-  - 0.9
-  - -1.8
-  - -0.1
-  - 0.9
-  - -1.8
-  - 0.1
-  - 0.9
-  - -1.8
-  - -0.1
-  - 0.9
-  - -1.8
-action_scale: 0.5
+/**:
+  estop:
+    ros__parameters:
+      time_step_size: 0.02
+
+  squat:
+    ros__parameters:
+      time_step_size: 0.02
+      duration: 1.0
+
+  stand:
+    ros__parameters:
+      time_step_size: 0.02
+      duration: 1.0
+
+  contact_state_estimator:
+    ros__parameters:
+      time_step_size: 0.001
+
+  base_state_estimator:
+    ros__parameters:
+      time_step_size: 0.001
+      activate: false
+
+  controller:
+    ros__parameters:
+      time_step_size: 0.002
+      gainBodyPosTangential: 500.
+      gainBodyVelTangential: 30.
+      gainBodyPosVertical: 500.
+      gainBodyVelVertical: 30.
+      gainBodyOrientation: 500.
+      gainBodyAngularVel: 30.
+      gainSwingFootPos: 500.
+      gainSwingFootVel: 30.
+      maxBodyLinearAccTarget: 50.
+      maxBodyAngularAccTarget: 50.
+      maxJointAngularAccTarget: 10000.
+      maxEndEffectorAccTarget: 1000.
+      stanceFootDamping: 0.
+      policy_path: /home/yarden/ethz/rl/crl/ros2_ws/src/unitree-go1-interface/data/model.onnx
+      default_pose:
+        [0.1, 0.9, -1.8, -0.1, 0.9, -1.8, 0.1, 0.9, -1.8, -0.1, 0.9, -1.8]
+      action_scale: 0.5
+
+  comm:
+    ros__parameters:
+      time_step_size: 0.01
+      monitorPublisherQueueSize: 10
+      remoteSubscriberQueueSize: 10
+
+  robot:
+    ros__parameters:
+      # FL_hip, FR_hip, RL_hip, RR_hip,
+      # FL_thigh, FR_thigh, RL_thigh, RR_thigh,
+      # FL_calf, FR_calf, RL_calf, RR_calf
+      joint_position_max:
+        [
+          0.863,
+          0.863,
+          0.863,
+          0.863,
+          4.501,
+          4.501,
+          4.501,
+          4.501,
+          -0.888,
+          -0.888,
+          -0.888,
+          -0.888,
+        ]
+      joint_position_min:
+        [
+          -0.863,
+          -0.863,
+          -0.863,
+          -0.863,
+          -0.686,
+          -0.686,
+          -0.686,
+          -0.686,
+          -2.818,
+          -2.818,
+          -2.818,
+          -2.818,
+        ]
+      joint_velocity_max:
+        [
+          30.1,
+          30.1,
+          30.1,
+          30.1,
+          30.1,
+          30.1,
+          30.1,
+          30.1,
+          20.06,
+          20.06,
+          20.06,
+          20.06,
+        ]
+      joint_torque_max:
+        [
+          23.7,
+          23.7,
+          23.7,
+          23.7,
+          23.7,
+          23.7,
+          23.7,
+          23.7,
+          35.55,
+          35.55,
+          35.55,
+          35.55,
+        ]
+      joint_position_control_kp:
+        [40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0]
+      joint_position_control_kd:
+        [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      joint_torque_control_kp:
+        [40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0]
+      joint_torque_control_kd:
+        [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      linear_damping: 0.0
+      angular_damping: 0.0
+      ground_truth_for_state: true
