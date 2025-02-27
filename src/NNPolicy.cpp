@@ -112,9 +112,6 @@ crl::dVector NNPolicy::getJointVelocities() const {
 
 crl::dVector NNPolicy::getLinearVelocity() const {
   const auto &state = data->getLeggedRobotState();
-  // TODO (yarden): double-check this. The velocity should be in the local
-  // frame so it might be that the orientation is not relevant
-  // should also map to the correct order.
   crl::V3D baseLinVel = state.baseOrientation.inverse() * state.baseVelocity;
   crl::dVector linVel(3);
   for (int i = 0; i < 3; i++) {
