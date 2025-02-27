@@ -68,8 +68,6 @@ void run(bool useSimulator) {
   auto machine = crl::fsm::make_fsm<Machines, Machines::ONBOARD>(
       "robot", States::ESTOP, s_cols, t_cols);
   std::array<Machines, 1> monitoring = {Machines::ONBOARD};
-  const auto contactStateEstimatorNode = std::make_shared<
-      crl::unitree::commons::GaitPlanContactStateEstimatorNode>(model, data);
   const auto baseStateEstimatorNode =
       std::make_shared<crl::unitree::commons::TwoStageBaseStateEstimatorNode>(
           model, data);
@@ -89,7 +87,6 @@ void run(bool useSimulator) {
   const auto commNode =
       std::make_shared<crl::unitree::commons::CommNode>(model, data);
   auto &executor = machine.get_executor();
-  executor.add_node(contactStateEstimatorNode);
   executor.add_node(baseStateEstimatorNode);
   executor.add_node(robotNode);
   executor.add_node(commNode);

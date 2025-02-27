@@ -77,7 +77,13 @@ crl::dVector NNPolicy::getGyro() const {
 
 crl::dVector NNPolicy::getGravity() const {
   const auto &state = data->getLeggedRobotState();
-  return state.baseOrientation.inverse() * crl::Vector3d(0, 0, -1.);
+  const auto gravityLocal =
+      state.baseOrientation.inverse() * crl::Vector3d(0, -1., 0);
+  crl::dVector gravity(3);
+  for (int i = 0; i < 3; i++) {
+    gravity[VELOCITY_INDEX_MAP[i]] = gravityLocal[i];
+  }
+  return gravity;
 }
 
 crl::dVector NNPolicy::getPose() const {
@@ -119,9 +125,10 @@ crl::dVector NNPolicy::getLinearVelocity() const {
 
 crl::dVector NNPolicy::getCommand() const {
   const auto &command = data->getCommand();
-  crl::dVector cmd(2);
+  crl::dVector cmd(3);
   cmd[0] = command.targetForwardSpeed;
-  cmd[1] = command.targetTurngingSpeed;
+  cmd[1] = command.targetSidewaysSpeed;
+  cmd[2] = command.targetTurngingSpeed;
   return cmd;
 }
 
