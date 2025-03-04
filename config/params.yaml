@@ -34,7 +34,7 @@
       maxJointAngularAccTarget: 10000.
       maxEndEffectorAccTarget: 1000.
       stanceFootDamping: 0.
-      policy_path: /home/yarden/ethz/rl/crl/ros2_ws/src/unitree-go1-interface/data/model.onnx
+      policy_path: /home/yarden/ethz/rl/crl/ros2_ws/src/unitree-go1-interface/data/ppo.onnx
       default_pose:
         [0.1, 0.9, -1.8, -0.1, 0.9, -1.8, 0.1, 0.9, -1.8, -0.1, 0.9, -1.8]
       action_scale: 0.5
